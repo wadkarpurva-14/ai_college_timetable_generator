@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CampusAI — Timetable Generator</title>
+  <style>
+    :root {
+      --page: light-dark(#f4f6fb, #0b1020);
+      --surface: light-dark(#ffffff, #131a2b);
+      --surface-soft: light-dark(#f7f8fc, #192237);
+      --text: light-dark(#172033, #eef2ff);
+      --muted: light-dark(#6f7890, #9ba7c2);
+      --border: light-dark(#e3e7f0, #29344b);
+      --purple: #6857e8;
+      --purple-dark: #5042c9;
+      --purple-pale: light-dark(#efedff, #29254f);
+      --green: light-dark(#14805e, #58d8ad);
+      --shadow: 0 16px 40px rgba(27, 36, 75, 0.07);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--text); background: var(--page); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .app-root { min-height: 100vh; width: 100%; background-color: var(--page); }
+    .shell { min-height: 100vh; display: grid; grid-template-columns: 242px minmax(0, 1fr); }
+    .sidebar { padding: 26px 17px; background: light-dark(#fff, #101729); border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 28px; }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 0 9px; }
+    .brand-icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 13px; background: linear-gradient(140deg, #7868f4, #5143c7); color: #fff; font-size: 20px; font-weight: 800; box-shadow: 0 8px 18px #6354db40; }
+    .brand-name { font-size: 17px; font-weight: 800; letter-spacing: -.4px; }
+    .brand-sub { font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: 1.3px; text-transform: uppercase; }
+    .nav-caption { padding: 0 12px; margin-bottom: 9px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; }
+    .nav-link { display: flex; align-items: center; gap: 12px; color: var(--muted); text-decoration: none; padding: 12px 13px; border-radius: 12px; font-size: 13px; font-weight: 650; margin: 3px 0; transition: .18s ease; }
+    .nav-link:hover, .nav-link.active { background: var(--purple-pale); color: var(--purple); }
+    .nav-ico { width: 20px; text-align: center; font-size: 16px; }
+    .side-tip { margin-top: auto; border: 1px solid var(--border); background: var(--surface-soft); border-radius: 16px; padding: 15px; }
+    .tip-spark { color: #ed9c2b; font-size: 20px; }
+    .side-tip h3 { margin: 8px 0 5px; font-size: 13px; }
+    .side-tip p { margin: 0; font-size: 11px; line-height: 1.6; color: var(--muted); }
+    .main { padding: 27px clamp(18px, 3vw, 42px) 40px; min-width: 0; max-width: 1680px; width: 100%; margin: 0 auto; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 24px; }
+    .eyebrow { color: var(--purple); font-size: 10px; text-transform: uppercase; letter-spacing: 1.7px; font-weight: 850; margin-bottom: 7px; }
+    h1 { font-size: clamp(24px, 2.3vw, 34px); letter-spacing: -1.1px; margin: 0; line-height: 1.13; }
+    .subtitle { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+    .status-pill { display: flex; align-items: center; gap: 7px; background: var(--surface); color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 9px 12px; white-space: nowrap; font-size: 11px; font-weight: 650; }
+    .status-dot { width: 7px; height: 7px; background: #21b580; border-radius: 50%; box-shadow: 0 0 0 3px #21b58020; }
+    .hero { display: flex; align-items: center; justify-content: space-between; gap: 18px; color: #fff; padding: 23px 26px; border-radius: 21px; background: radial-gradient(circle at 78% 10%, #a399ff70 0, transparent 28%), linear-gradient(115deg, #5a4bd5, #7462ef 62%, #8273f2); box-shadow: 0 16px 34px #5949d529; overflow: hidden; position: relative; }
+    .hero::after { content: ""; position: absolute; width: 210px; height: 210px; border: 1px solid #ffffff24; border-radius: 50%; right: 7%; top: -108px; box-shadow: 0 0 0 25px #ffffff08, 0 0 0 51px #ffffff06; pointer-events: none; }
+    .hero-content { position: relative; z-index: 1; max-width: 700px; }
+    .hero-kicker { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #ffffff3b; background: #ffffff18; border-radius: 999px; padding: 5px 9px; font-size: 10px; letter-spacing: .4px; font-weight: 750; }
+    .hero h2 { margin: 13px 0 7px; font-size: clamp(19px, 2vw, 25px); letter-spacing: -.55px; }
+    .hero p { margin: 0; font-size: 12px; color: #efedff; line-height: 1.65; max-width: 550px; }
+    .hero .primary { position: relative; z-index: 1; background: #fff; color: #5142c9; border: 0; box-shadow: 0 8px 18px #3324a22c; white-space: nowrap; }
+    .hero .primary:hover { background: #f5f3ff; transform: translateY(-1px); }
+    .button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 10px; padding: 10px 13px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 12px; font-weight: 750; transition: .18s ease; }
+    .button:hover { border-color: #b9b1ff; }
+    .button.primary { background: var(--purple); color: white; border-color: var(--purple); }
+    .button.primary:hover { background: var(--purple-dark); }
+    .button.small { padding: 8px 10px; font-size: 11px; }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; margin: 19px 0 23px; }
+    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 15px; padding: 16px 17px; box-shadow: 0 6px 20px #1e2c5b05; }
+    .stat-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 11px; font-weight: 650; }
+    .stat-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--purple-pale); color: var(--purple); font-size: 15px; }
+    .stat-number { margin-top: 10px; font-size: 25px; font-weight: 850; letter-spacing: -.8px; }
+    .stat-note { font-size: 10px; color: var(--muted); margin-top: 4px; }
+    .workspace { display: grid; grid-template-columns: minmax(270px, 320px) minmax(0, 1fr); gap: 18px; align-items: start; }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 17px; overflow: hidden; box-shadow: var(--shadow); min-width: 0; }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 17px 19px; border-bottom: 1px solid var(--border); }
+    .panel-title { font-size: 14px; font-weight: 800; letter-spacing: -.25px; }
+    .panel-sub { font-size: 10px; margin-top: 4px; color: var(--muted); }
+    .config-body { padding: 18px 19px 20px; }
+    .field { margin-bottom: 17px; }
+    .field label { display: block; font-size: 11px; font-weight: 750; margin-bottom: 7px; }
+    .hint { display: block; font-size: 10px; line-height: 1.5; color: var(--muted); margin-top: 6px; }
+    .control { width: 100%; border: 1px solid var(--border); border-radius: 9px; padding: 10px 11px; background: var(--surface-soft); color: var(--text); outline: none; font-size: 11px; transition: border-color .15s, box-shadow .15s; }
+    .control:focus { border-color: #8c80f2; box-shadow: 0 0 0 3px #7563ed1c; }
+    textarea.control { min-height: 158px; resize: vertical; line-height: 1.75; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 10px; }
+    .two-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .config-footer { padding-top: 4px; display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+    .error { display: none; margin: 12px 0 0; font-size: 11px; line-height: 1.5; color: #d64c5b; background: light-dark(#fff0f1, #381e2a); border-radius: 9px; padding: 9px 10px; }
+    .table-panel { min-width: 0; }
+    .table-head-left { min-width: 0; }
+    .table-head-actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; justify-content: flex-end; }
+    .section-tabs { display: flex; gap: 7px; padding: 13px 17px 0; overflow-x: auto; }
+    .section-tab { padding: 8px 12px; border: 1px solid transparent; border-radius: 9px 9px 0 0; background: transparent; color: var(--muted); font-size: 11px; font-weight: 750; white-space: nowrap; }
+    .section-tab.active { background: var(--purple-pale); color: var(--purple); border-color: light-dark(#ded9ff, #393363); }
+    .table-meta { padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; border-top: 1px solid var(--border); }
+    .meta-text { color: var(--muted); font-size: 10px; }
+    .success-text { color: var(--green); font-weight: 800; }
+    .table-wrap { padding: 12px 15px 16px; overflow-x: auto; }
+    table { border-collapse: separate; border-spacing: 5px; width: 100%; min-width: 610px; table-layout: fixed; }
+    th { color: var(--muted); font-size: 10px; font-weight: 800; padding: 8px 5px; text-align: center; }
+    th:first-child { width: 75px; text-align: left; padding-left: 8px; }
+    td { vertical-align: top; padding: 0; height: 84px; }
+    .period-label { height: 100%; min-height: 84px; border-radius: 9px; border: 1px solid var(--border); display: flex; flex-direction: column; justify-content: center; padding: 8px; background: var(--surface-soft); }
+    .period-n { font-size: 11px; font-weight: 850; }
+    .period-time { font-size: 9px; color: var(--muted); margin-top: 4px; line-height: 1.45; }
+    .slot { min-height: 84px; height: 100%; padding: 9px 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-soft); display: flex; flex-direction: column; gap: 5px; position: relative; overflow: hidden; }
+    .slot.filled { background: var(--subject-bg, var(--purple-pale)); border-color: var(--subject-border, var(--border)); }
+    .slot.filled::before { content: ""; width: 3px; position: absolute; top: 0; bottom: 0; left: 0; background: var(--subject-accent, var(--purple)); }
+    .slot-subject { font-size: 10px; font-weight: 850; line-height: 1.35; overflow-wrap: anywhere; }
+    .slot-teacher { color: var(--muted); font-size: 9px; line-height: 1.4; overflow-wrap: anywhere; }
+    .slot-room { margin-top: auto; align-self: flex-start; background: light-dark(#ffffffb8, #111827a8); color: var(--subject-accent, var(--muted)); padding: 3px 5px; font-size: 8px; font-weight: 800; border-radius: 5px; }
+    .empty { min-height: 84px; height: 100%; background: light-dark(#fafbfe, #151d2e); border: 1px dashed var(--border); border-radius: 10px; display: grid; place-items: center; color: light-dark(#adb4c6, #66738f); font-size: 10px; }
+    .legend { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 0 19px 14px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 9px; }
+    .legend-dot { width: 7px; height: 7px; border-radius: 2px; background: var(--purple); }
+    .lower-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); gap: 18px; margin-top: 18px; }
+    .lower-body { padding: 17px 19px; }
+    .logic-list { display: grid; gap: 13px; }
+    .logic-row { display: flex; gap: 11px; align-items: flex-start; }
+    .logic-icon { flex: 0 0 29px; width: 29px; height: 29px; display: grid; place-items: center; background: var(--purple-pale); color: var(--purple); border-radius: 9px; font-size: 13px; }
+    .logic-row strong { display: block; font-size: 11px; margin-bottom: 4px; }
+    .logic-row p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.55; }
+    .subject-list { display: grid; gap: 10px; }
+    .subject-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 11px; }
+    .subject-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .subject-color { width: 9px; height: 9px; border-radius: 3px; flex: 0 0 9px; }
+    .subject-name { font-weight: 750; overflow-wrap: anywhere; }
+    .subject-count { color: var(--muted); font-size: 10px; white-space: nowrap; }
+    .toast { position: fixed; z-index: 20; right: 22px; bottom: 22px; background: light-dark(#172033, #eef2ff); color: light-dark(#fff, #141a2a); box-shadow: 0 15px 35px #0003; border-radius: 12px; padding: 12px 16px; font-size: 12px; font-weight: 750; max-width: min(380px, calc(100vw - 44px)); display: none; }
+    .footer-note { margin-top: 22px; color: var(--muted); text-align: center; font-size: 10px; }
+    @media (max-width: 1120px) {
+      .shell { grid-template-columns: 208px minmax(0, 1fr); }
+      .workspace { grid-template-columns: minmax(240px, 290px) minmax(0, 1fr); }
+      .stats { gap: 9px; }
+      .stat { padding: 13px; }
+      .stat-number { font-size: 22px; }
+    }
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      .sidebar { padding: 14px 18px; border-right: 0; border-bottom: 1px solid var(--border); flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+      .side-nav, .side-tip { display: none; }
+      .main { padding: 22px 18px 32px; }
+      .workspace { grid-template-columns: 1fr; }
+      .config-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
+      .field.subject-field { grid-column: 1 / -1; }
+      .config-footer { grid-column: 1 / -1; }
+    }
+    @media (max-width: 620px) {
+      .main { padding: 18px 12px 28px; }
+      .topbar { align-items: flex-start; }
+      .status-pill { display: none; }
+      .hero { align-items: flex-start; flex-direction: column; padding: 20px; }
+      .hero .primary { align-self: flex-start; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .config-body { display: block; }
+      .lower-grid { grid-template-columns: 1fr; }
+      .panel-head { padding: 15px; }
+      .table-wrap { padding: 9px 8px 12px; }
+      .table-head-actions .button { padding: 7px 8px; }
+      h1 { font-size: 25px; }
+    }
+    @media print {
+      body, .app-root { background: white !important; color: black !important; }
+      .sidebar, .hero, .stats, .config-panel, .lower-grid, .topbar, .table-head-actions, .section-tabs, .table-meta, .legend, .footer-note, .toast { display: none !important; }
+      .shell, .workspace { display: block; }
+      .main { padding: 0; }
+      .table-panel, .panel { box-shadow: none; border: 0; }
+      .panel-head { border: 0; padding: 0 0 8px; }
+      table { min-width: 0; }
+      td, .slot, .empty, .period-label { min-height: 65px; height: 65px; }
+      .slot { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-root">
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-icon">C</div>
+          <div><div class="brand-name">CampusAI</div><div class="brand-sub">Smart scheduling</div></div>
+        </div>
+        <div class="side-nav">
+          <div class="nav-caption">Workspace</div>
+          <a class="nav-link active" href="#dashboard"><span class="nav-ico">▦</span>Overview</a>
+          <a class="nav-link" href="#generator"><span class="nav-ico">◷</span>Timetable generator</a>
+          <a class="nav-link" href="#subjects"><span class="nav-ico">▤</span>Subject summary</a>
+          <a class="nav-link" href="#how-it-works"><span class="nav-ico">✧</span>How it works</a>
+        </div>
+        <div class="side-tip">
+          <div class="tip-spark">✦</div>
+          <h3>Smarter schedules</h3>
+          <p>Generate a weekly timetable while checking teacher availability, room use and subject distribution.</p>
+        </div>
+      </aside>
+
+      <main class="main" id="dashboard">
+        <div class="topbar">
+          <div>
+            <div class="eyebrow">Academic planning / 2026–27</div>
+            <h1>AI College Timetable Generator</h1>
+            <p class="subtitle">Build a balanced weekly schedule in a few clicks.</p>
+          </div>
+          <div class="top-actions"><div class="status-pill"><span class="status-dot"></span> Ready to generate</div></div>
+        </div>
+
+        <section class="hero">
+          <div class="hero-content">
+            <div class="hero-kicker">✦ SMART SCHEDULING ENGINE</div>
+            <h2>Less timetable juggling. More time for learning.</h2>
+            <p>Enter your classes, subjects and weekly lecture counts. The generator looks for a schedule with no teacher or room clashes and avoids repeating a subject twice on the same day.</p>
+          </div>
+          <button class="button primary" id="heroGenerate">✦ Generate timetable <span>→</span></button>
+        </section>
+
+        <section class="stats" aria-label="Timetable summary">
+          <div class="stat"><div class="stat-top"><span>Class sections</span><span class="stat-icon">▦</span></div><div class="stat-number" id="statSections">2</div><div class="stat-note">Included in this schedule</div></div>
+          <div class="stat"><div class="stat-top"><span>Subjects</span><span class="stat-icon">▤</span></div><div class="stat-number" id="statSubjects">6</div><div class="stat-note">With assigned teachers</div></div>
+          <div class="stat"><div class="stat-top"><span>Weekly sessions</span><span class="stat-icon">◷</span></div><div class="stat-number" id="statSessions">42</div><div class="stat-note">Across all sections</div></div>
+          <div class="stat"><div class="stat-top"><span>Conflicts found</span><span class="stat-icon">✓</span></div><div class="stat-number" id="statConflicts">0</div><div class="stat-note">Teacher and room clashes</div></div>
+        </section>
+
+        <section class="workspace" id="generator">
+          <article class="panel config-panel">
+            <div class="panel-head"><div><div class="panel-title">Schedule setup</div><div class="panel-sub">Adjust the inputs for your college</div></div><span class="stat-icon">⚙</span></div>
+            <div class="config-body">
+              <div class="field">
+                <label for="sections">Class sections</label>
+                <input class="control" id="sections" value="SY AI&DS A, SY AI&DS B" />
+                <span class="hint">Separate section names with commas.</span>
+              </div>
+              <div class="two-fields">
+                <div class="field"><label for="days">Working days</label><select class="control" id="days"><option value="5">5 days</option><option value="6" selected>6 days</option></select></div>
+                <div class="field"><label for="periods">Periods / day</label><select class="control" id="periods"><option value="6" selected>6 periods</option><option value="7">7 periods</option></select></div>
+              </div>
+              <div class="field">
+                <label for="rooms">Available rooms</label>
+                <input class="control" id="rooms" value="Room 201, Room 202, Lab 1, Lab 2" />
+                <span class="hint">At least one room is required for each simultaneous class.</span>
+              </div>
+              <div class="field subject-field">
+                <label for="subjects">Subjects and weekly lectures</label>
+                <textarea class="control" id="subjects" spellcheck="false">Mathematics | Prof. Kulkarni | 4
+Data Structures | Prof. Patil | 4
+DBMS | Prof. Joshi | 4
+Operating Systems | Prof. Shah | 4
+Artificial Intelligence | Prof. Desai | 3
+Communication Skills | Prof. More | 2</textarea>
+                <span class="hint">One subject per line: <b>Subject | Teacher | periods per week</b>. Keep the total within available weekly slots.</span>
+              </div>
+              <div class="config-footer">
+                <button class="button primary" id="generateBtn">✦ Generate schedule</button>
+                <button class="button" id="resetBtn" title="Restore example data">↺ Reset</button>
+              </div>
+              <div class="error" id="errorBox" role="alert"></div>
+            </div>
+          </article>
+
+          <article class="panel table-panel">
+            <div class="panel-head">
+              <div class="table-head-left"><div class="panel-title">Weekly timetable</div><div class="panel-sub" id="tableSubtitle">Sample schedule · SY AI&amp;DS A</div></div>
+              <div class="table-head-actions"><button class="button small" id="csvBtn">↓ Export CSV</button><button class="button small" id="printBtn">⎙ Print</button></div>
+            </div>
+            <div class="section-tabs" id="sectionTabs" role="tablist" aria-label="Choose class section"></div>
+            <div class="table-wrap" id="tableWrap"></div>
+            <div class="legend"><span class="legend-item"><span class="legend-dot"></span> Scheduled lecture</span><span class="legend-item"><span class="legend-dot" style="background:#aab2c5"></span> Free period</span><span class="legend-item" id="slotCount">21 of 36 periods scheduled</span></div>
+            <div class="table-meta"><span class="meta-text" id="generatedText">Example timetable loaded</span><span class="meta-text success-text" id="conflictText">✓ No clashes detected</span></div>
+          </article>
+        </section>
+
+        <section class="lower-grid">
+          <article class="panel" id="how-it-works">
+            <div class="panel-head"><div><div class="panel-title">How the smart scheduler works</div><div class="panel-sub">Simple logic you can explain in your micro-project viva</div></div></div>
+            <div class="lower-body"><div class="logic-list">
+              <div class="logic-row"><div class="logic-icon">1</div><div><strong>Read the requirements</strong><p>Collect class sections, subjects, teacher names, weekly lecture counts, working days and rooms.</p></div></div>
+              <div class="logic-row"><div class="logic-icon">2</div><div><strong>Find a valid time slot</strong><p>Check whether the class, teacher and room are free at that day and period before placing a lecture.</p></div></div>
+              <div class="logic-row"><div class="logic-icon">3</div><div><strong>Balance the week</strong><p>Spread the same subject across different days and leave unused slots as free periods.</p></div></div>
+              <div class="logic-row"><div class="logic-icon">4</div><div><strong>Review and export</strong><p>View each section, then download the timetable as CSV or print it for submission.</p></div></div>
+            </div></div>
+          </article>
+          <article class="panel" id="subjects">
+            <div class="panel-head"><div><div class="panel-title">Subject summary</div><div class="panel-sub">Weekly session requirements</div></div><span class="stat-icon">▤</span></div>
+            <div class="lower-body"><div class="subject-list" id="subjectList"></div></div>
+          </article>
+        </section>
+        <div class="footer-note">CampusAI · Micro-project prototype · Scheduling runs locally in this browser</div>
+      </main>
+    </div>
+    <div class="toast" id="toast" role="status"></div>
+  </div>
+<script>
+  const defaults = {
+    sections: 'SY AI&DS A, SY AI&DS B',
+    days: '6', periods: '6', rooms: 'Room 201, Room 202, Lab 1, Lab 2',
+    subjects: 'Mathematics | Prof. Kulkarni | 4\nData Structures | Prof. Patil | 4\nDBMS | Prof. Joshi | 4\nOperating Systems | Prof. Shah | 4\nArtificial Intelligence | Prof. Desai | 3\nCommunication Skills | Prof. More | 2'
+  };
+  const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const subjectPalette = [
+    { bg: 'light-dark(#efedff, #29254f)', border: 'light-dark(#dcd6ff, #464075)', accent: '#7665e8' },
+    { bg: 'light-dark(#e7f6f2, #173a37)', border: 'light-dark(#ccebe2, #28544d)', accent: '#1f9e83' },
+    { bg: 'light-dark(#fff2df, #403022)', border: 'light-dark(#f5dfbd, #63472d)', accent: '#cf8731' },
+    { bg: 'light-dark(#eaf2ff, #1e3152)', border: 'light-dark(#d6e4ff, #314c76)', accent: '#4d83d8' },
+    { bg: 'light-dark(#fdebf1, #432437)', border: 'light-dark(#f5d2df, #69334d)', accent: '#d45d8a' },
+    { bg: 'light-dark(#eaf6e8, #263d2d)', border: 'light-dark(#d5ebd1, #3b5b42)', accent: '#64a65c' },
+    { bg: 'light-dark(#f0eafa, #34264c)', border: 'light-dark(#dfd0f3, #4c386e)', accent: '#9a6ac9' }
+  ];
+  let current = null;
+  let selectedSection = 0;
+  let subjectColorMap = new Map();
+  let toastTimer = null;
+
+  function parseConfig() {
+    const sections = document.getElementById('sections').value.split(',').map(x => x.trim()).filter(Boolean);
+    const rooms = document.getElementById('rooms').value.split(',').map(x => x.trim()).filter(Boolean);
+    const days = Number(document.getElementById('days').value);
+    const periods = Number(document.getElementById('periods').value);
+    const subjectsText = document.getElementById('subjects').value.trim();
+    const subjects = [];
+    if (subjectsText) {
+      subjectsText.split('\n').map(line => line.trim()).filter(Boolean).forEach((line, i) => {
+        const parts = line.split('|').map(x => x.trim());
+        if (parts.length !== 3 || !parts[0] || !parts[1] || !Number.isInteger(Number(parts[2])) || Number(parts[2]) < 1) {
+          throw new Error(`Line ${i + 1} is invalid. Use: Subject | Teacher | whole-number periods`);
+        }
+        subjects.push({ name: parts[0], teacher: parts[1], count: Number(parts[2]), idx: subjects.length });
+      });
+    }
+    if (sections.length < 1) throw new Error('Enter at least one class section.');
+    if (new Set(sections).size !== sections.length) throw new Error('Class section names must be unique.');
+    if (rooms.length < 1) throw new Error('Enter at least one room.');
+    if (subjects.length < 1) throw new Error('Enter at least one subject.');
+    if (subjects.some(s => s.count > days)) throw new Error('A subject cannot appear more than once per day. Increase working days or lower its weekly period count.');
+    if (subjects.reduce((sum, s) => sum + s.count, 0) > days * periods) throw new Error('Weekly subject periods exceed the available slots for each section.');
+    if (sections.length > rooms.length) {
+      // This is allowed because classes can use different rooms at different times; collision checking happens slot-by-slot.
+    }
+    return { sections, rooms, days, periods, subjects };
+  }
+
+  function shuffled(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function createSchedule(config) {
+    const { sections, rooms, days, periods, subjects } = config;
+    const slotsPerSection = days * periods;
+    const totalSessions = subjects.reduce((sum, s) => sum + s.count, 0) * sections.length;
+    if (totalSessions > slotsPerSection * sections.length) throw new Error('Not enough class time slots for the requested lectures.');
+    const sessions = [];
+    sections.forEach((section, sectionIndex) => subjects.forEach(subject => {
+      for (let k = 0; k < subject.count; k++) sessions.push({ sectionIndex, section, subject, occurrence: k });
+    }));
+
+    // Most-constrained sessions are placed first. Random tie order helps vary the generated timetable.
+    sessions.sort((a, b) => b.subject.count - a.subject.count || Math.random() - 0.5);
+    const grids = sections.map(() => Array.from({ length: days }, () => Array(periods).fill(null)));
+    const teacherAt = new Map();
+    const roomsAt = new Map();
+    const subjectDay = new Set();
+    let nodes = 0;
+    const nodeLimit = 90000;
+
+    function slotKey(day, period) { return `${day}-${period}`; }
+    function sectionSubjectDay(sectionIndex, subjectName, day) { return `${sectionIndex}|${subjectName.toLowerCase()}|${day}`; }
+
+    function backtrack(index) {
+      if (index >= sessions.length) return true;
+      if (++nodes > nodeLimit) return false;
+      const sess = sessions[index];
+      const sIdx = sess.sectionIndex;
+      const subjectKey = sess.subject.name.toLowerCase();
+      let candidates = [];
+      for (let day = 0; day < days; day++) {
+        if (subjectDay.has(sectionSubjectDay(sIdx, subjectKey, day))) continue;
+        for (let period = 0; period < periods; period++) {
+          if (grids[sIdx][day][period] !== null) continue;
+          const key = slotKey(day, period);
+          const teacherKey = `${key}|${sess.subject.teacher.toLowerCase()}`;
+          if (teacherAt.has(teacherKey)) continue;
+          const usedRooms = roomsAt.get(key) || new Set();
+          if (usedRooms.size >= rooms.length) continue;
+          const room = rooms.find(r => !usedRooms.has(r));
+          // Encourage the class's daily load to remain balanced; use a small random tie-breaker.
+          const dailyLoad = grids[sIdx][day].filter(Boolean).length;
+          candidates.push({ day, period, key, teacherKey, room, score: dailyLoad * 10 + Math.random() * 8 + (period === 0 || period === periods - 1 ? 1.2 : 0) });
+        }
+      }
+      candidates.sort((a, b) => a.score - b.score);
+      // Try several randomized candidates; backtracking frees the slot if later subjects cannot fit.
+      for (const c of candidates) {
+        grids[sIdx][c.day][c.period] = { subject: sess.subject, room: c.room };
+        subjectDay.add(sectionSubjectDay(sIdx, subjectKey, c.day));
+        teacherAt.set(c.teacherKey, true);
+        if (!roomsAt.has(c.key)) roomsAt.set(c.key, new Set());
+        roomsAt.get(c.key).add(c.room);
+        if (backtrack(index + 1)) return true;
+        grids[sIdx][c.day][c.period] = null;
+        subjectDay.delete(sectionSubjectDay(sIdx, subjectKey, c.day));
+        teacherAt.delete(c.teacherKey);
+        roomsAt.get(c.key).delete(c.room);
+        if (roomsAt.get(c.key).size === 0) roomsAt.delete(c.key);
+        if (nodes > nodeLimit) return false;
+      }
+      return false;
+    }
+
+    let solved = false;
+    for (let attempt = 0; attempt < 4 && !solved; attempt++) {
+      if (attempt > 0) {
+        grids.forEach(g => g.forEach(day => day.fill(null)));
+        teacherAt.clear(); roomsAt.clear(); subjectDay.clear(); nodes = 0;
+        sessions.sort((a, b) => b.subject.count - a.subject.count || Math.random() - 0.5);
+      }
+      solved = backtrack(0);
+    }
+    if (!solved) throw new Error('I could not find a clash-free timetable with these settings. Try adding rooms or working periods, or reducing weekly lectures.');
+    return { ...config, grids, totalSessions, generatedAt: new Date() };
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  }
+  function timeLabel(period) {
+    const startMinutes = 9 * 60 + period * 60;
+    const endMinutes = startMinutes + 50;
+    const fmt = value => `${String(Math.floor(value / 60) % 24).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
+    return `${fmt(startMinutes)}–${fmt(endMinutes)}`;
+  }
+  function paletteFor(subject) {
+    if (!subjectColorMap.has(subject)) subjectColorMap.set(subject, subjectColorMap.size % subjectPalette.length);
+    return subjectPalette[subjectColorMap.get(subject)];
+  }
+  function renderStats(schedule) {
+    document.getElementById('statSections').textContent = schedule.sections.length;
+    document.getElementById('statSubjects').textContent = schedule.subjects.length;
+    document.getElementById('statSessions').textContent = schedule.totalSessions;
+    document.getElementById('statConflicts').textContent = '0';
+  }
+  function renderTabs(schedule) {
+    const host = document.getElementById('sectionTabs');
+    host.innerHTML = schedule.sections.map((name, i) => `<button class="section-tab ${i === selectedSection ? 'active' : ''}" role="tab" aria-selected="${i === selectedSection}" data-section="${i}">${escapeHtml(name)}</button>`).join('');
+    host.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
+      selectedSection = Number(btn.dataset.section);
+      renderTabs(current);
+      renderTable(current);
+    }));
+  }
+  function renderTable(schedule) {
+    const sIndex = Math.min(selectedSection, schedule.sections.length - 1);
+    selectedSection = sIndex;
+    const dayHeaders = dayNames.slice(0, schedule.days).map(day => `<th>${day.slice(0, 3)}</th>`).join('');
+    let html = `<table aria-label="Weekly timetable for ${escapeHtml(schedule.sections[sIndex])}"><thead><tr><th>PERIOD</th>${dayHeaders}</tr></thead><tbody>`;
+    let count = 0;
+    for (let period = 0; period < schedule.periods; period++) {
+      html += `<tr><td><div class="period-label"><span class="period-n">P${period + 1}</span><span class="period-time">${timeLabel(period)}</span></div></td>`;
+      for (let day = 0; day < schedule.days; day++) {
+        const item = schedule.grids[sIndex][day][period];
+        if (!item) { html += '<td><div class="empty">Free period</div></td>'; continue; }
+        count++;
+        const p = paletteFor(item.subject.name);
+        html += `<td><div class="slot filled" style="--subject-bg:${p.bg};--subject-border:${p.border};--subject-accent:${p.accent}"><span class="slot-subject">${escapeHtml(item.subject.name)}</span><span class="slot-teacher">${escapeHtml(item.subject.teacher)}</span><span class="slot-room">${escapeHtml(item.room)}</span></div></td>`;
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table>';
+    document.getElementById('tableWrap').innerHTML = html;
+    document.getElementById('tableSubtitle').textContent = `Generated schedule · ${schedule.sections[sIndex]}`;
+    document.getElementById('slotCount').textContent = `${count} of ${schedule.days * schedule.periods} periods scheduled`;
+    document.getElementById('generatedText').textContent = `Last generated: ${schedule.generatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    document.getElementById('conflictText').textContent = '✓ No teacher or room clashes detected';
+    document.getElementById('conflictText').classList.add('success-text');
+  }
+  function renderSubjectSummary(schedule) {
+    const list = document.getElementById('subjectList');
+    list.innerHTML = schedule.subjects.map(subject => {
+      const p = paletteFor(subject.name);
+      return `<div class="subject-row"><div class="subject-left"><span class="subject-color" style="background:${p.accent}"></span><span class="subject-name">${escapeHtml(subject.name)}</span></div><span class="subject-count">${subject.count} / week</span></div>`;
+    }).join('');
+  }
+  function renderAll(schedule) {
+    current = schedule;
+    subjectColorMap = new Map();
+    schedule.subjects.forEach(s => paletteFor(s.name));
+    renderStats(schedule);
+    renderTabs(schedule);
+    renderTable(schedule);
+    renderSubjectSummary(schedule);
+  }
+  function showError(message) {
+    const box = document.getElementById('errorBox');
+    box.textContent = message;
+    box.style.display = 'block';
+  }
+  function clearError() {
+    const box = document.getElementById('errorBox');
+    box.textContent = '';
+    box.style.display = 'none';
+  }
+  function showToast(message) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.style.display = 'block';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.style.display = 'none'; }, 3000);
+  }
+  function generate() {
+    clearError();
+    try {
+      const config = parseConfig();
+      selectedSection = 0;
+      const schedule = createSchedule(config);
+      renderAll(schedule);
+      showToast('Timetable generated successfully — no clashes found.');
+    } catch (error) {
+      showError(error.message || 'Something went wrong. Please check your inputs.');
+    }
+  }
+  function resetForm() {
+    document.getElementById('sections').value = defaults.sections;
+    document.getElementById('days').value = defaults.days;
+    document.getElementById('periods').value = defaults.periods;
+    document.getElementById('rooms').value = defaults.rooms;
+    document.getElementById('subjects').value = defaults.subjects;
+    generate();
+  }
+  function exportCsv() {
+    if (!current) return;
+    const rows = [['Section', 'Day', 'Period', 'Time', 'Subject', 'Teacher', 'Room']];
+    current.sections.forEach((section, sIndex) => current.grids[sIndex].forEach((daySlots, dayIndex) => daySlots.forEach((item, periodIndex) => {
+      if (item) rows.push([section, dayNames[dayIndex], periodIndex + 1, timeLabel(periodIndex), item.subject.name, item.subject.teacher, item.room]);
+    })));
+    const csv = rows.map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'college_timetable.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    showToast('CSV export prepared. Check your downloads.');
+  }
+  document.getElementById('generateBtn').addEventListener('click', generate);
+  document.getElementById('heroGenerate').addEventListener('click', () => { document.getElementById('generator').scrollIntoView({ behavior: 'smooth', block: 'start' }); generate(); });
+  document.getElementById('resetBtn').addEventListener('click', resetForm);
+  document.getElementById('csvBtn').addEventListener('click', exportCsv);
+  document.getElementById('printBtn').addEventListener('click', () => window.print());
+  document.querySelectorAll('.nav-link').forEach(link => link.addEventListener('click', () => {
+    document.querySelectorAll('.nav-link').forEach(item => item.classList.remove('active'));
+    link.classList.add('active');
+  }));
+  // Load a ready-to-use example on first open.
+  generate();
+</script>
+</body>
+</html>
